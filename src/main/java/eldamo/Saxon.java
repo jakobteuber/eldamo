@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /// Runs the XQuery and XSLT files, recompiling them after any of them changed.
 final class Saxon {
@@ -17,13 +18,18 @@ final class Saxon {
     private static final Map<String, Object> compiled = new HashMap<>();
     private static long compiledAt;
 
+    /// Values cached by `xdb:memo`, valid for one data snapshot and one version of the queries
+    static final ScopedValue<Map<String, XdmValue>> MEMO = ScopedValue.newInstance();
+    private static Map<String, XdmValue> memo = new ConcurrentHashMap<>();
+    private static Data.Snapshot memoData;
+
     static {
         Functions.register(PROCESSOR);
     }
 
     static void render(String file, Data.Snapshot data, Map<String, String> params, Serializer out) throws Exception {
         var exe = compile(file);
-        ScopedValue.where(Data.CURRENT, data).call(() -> {
+        ScopedValue.where(Data.CURRENT, data).where(MEMO, memo(data)).call(() -> {
             switch (exe) {
                 case XQueryExecutable xq -> {
                     var query = xq.load();
@@ -49,6 +55,7 @@ final class Saxon {
         if (latest > compiledAt) {
             compiled.clear();
             compiledAt = latest;
+            memoData = null;
         }
         var exe = compiled.get(file);
         if (exe == null) {
@@ -63,6 +70,14 @@ final class Saxon {
             compiled.put(file, exe);
         }
         return exe;
+    }
+
+    private static synchronized Map<String, XdmValue> memo(Data.Snapshot data) {
+        if (data != memoData) {
+            memo = new ConcurrentHashMap<>();
+            memoData = data;
+        }
+        return memo;
     }
 
     private static long lastModified() throws IOException {

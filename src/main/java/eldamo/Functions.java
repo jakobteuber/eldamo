@@ -29,6 +29,7 @@ final class Functions {
     private static final SequenceType STRING_ = makeSequenceType(STRING, ZERO_OR_ONE);
     private static final SequenceType ITEMS = makeSequenceType(ANY_ITEM, ZERO_OR_MORE);
     private static final SequenceType BOOL = makeSequenceType(BOOLEAN, ONE);
+    private static final SequenceType FUNCTION = makeSequenceType(ANY_FUNCTION, ONE);
 
     private interface Body {
         XdmValue call(XdmValue[] args) throws Exception;
@@ -46,7 +47,8 @@ final class Functions {
             fn("allReferenceCognates", NODES, Functions::allReferenceCognates, NODE),
             fn("allWordCognates", NODES, Functions::allWordCognates, NODE),
             fn("hashcode", STRING_, Functions::hashcode, NODE),
-            fn("html", NODES, Functions::html, ITEMS)
+            fn("html", NODES, Functions::html, ITEMS),
+            fn("memo", ITEMS, Functions::memo, STRING_, FUNCTION)
         ).forEach(processor::registerExtensionFunction);
     }
 
@@ -67,8 +69,8 @@ final class Functions {
         };
     }
 
-    private static String str(XdmValue v) { return v.isEmpty() ? null : v.itemAt(0).getStringValue(); }
-    private static XdmNode node(XdmValue v) { return v.isEmpty() ? null : (XdmNode) v.itemAt(0); }
+    private static String str(XdmValue v) { return v.size() == 0 ? null : v.itemAt(0).getStringValue(); }
+    private static XdmNode node(XdmValue v) { return v.size() == 0 ? null : (XdmNode) v.itemAt(0); }
     private static List<XdmNode> nodes(XdmValue v) { return v.stream().map(XdmNode.class::cast).toList(); }
 
     static String attr(XdmNode node, String name) {
@@ -182,6 +184,17 @@ final class Functions {
         }
         var root = Saxon.PROCESSOR.newDocumentBuilder().build(new DOMSource(doc)).children().iterator().next();
         return new XdmValue(root.children());
+    }
+
+    /// The result of calling the function, computed once per key
+    private static XdmValue memo(XdmValue[] a) throws SaxonApiException {
+        var memo = Saxon.MEMO.get();
+        var value = memo.get(str(a[0]));
+        if (value == null) {
+            value = ((XdmFunctionItem) a[1].itemAt(0)).call(Saxon.PROCESSOR);
+            memo.putIfAbsent(str(a[0]), value);
+        }
+        return value;
     }
 
     private static List<XdmNode> lookup(String key, String value) {

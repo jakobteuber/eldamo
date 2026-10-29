@@ -11,6 +11,41 @@ declare function local:print-deriv($deriv as node()?) as element() {
     </span>
 };
 
+(: The previous and next word in the navigation list of $word, which is sorted once per language and kind of word :)
+declare function local:neighbours($root as element(), $lang as xs:string?, $speech as xs:string?, $is-neo as xs:boolean, $word as element()?) as map(*) {
+    let $kind :=
+        if (ends-with($speech, '-name')) then 'name'
+        else if ($speech = ('phrase', 'text')) then 'phrase'
+        else if ($speech = ('grammar', 'phonetic-group', 'phonetic-rule', 'phoneme', 'root')) then $speech
+        else 'word'
+    let $nav := xdb:memo(string-join(('nav', string($is-neo), $lang, $kind), ' '), function() {
+        let $all := if ($is-neo) then c:lang-words($root, $lang) else xdb:key($root, 'language', $lang)
+        let $words :=
+            if ($kind = 'name') then $all[ends-with(c:get-speech(.), '-name')]
+            else if ($kind = 'phrase') then $all[c:get-speech(.) = ('phrase', 'text')]
+            else if ($kind = 'word') then $all
+                [not(ends-with(c:get-speech(.), '-name'))]
+                [not(c:get-speech(.)='phrase' or c:get-speech(.)='text')]
+                [not(starts-with(c:get-speech(.), 'phone'))]
+                [not(c:get-speech(.)='grammar')]
+                [not(c:get-speech(.)='root')]
+            else $all[c:get-speech(.) = $kind]
+        let $sorted :=
+            for $item in $words
+            order by $item/@order, c:normalize-for-sort(if ($is-neo) then c:normalize-spelling($item/@v) else $item/@v)
+            return $item
+        return map {
+            'words': array { $sorted },
+            'index': map:merge(for $item at $i in $sorted return map { xdb:hashcode($item): $i }, map { 'duplicates': 'use-first' })
+        }
+    })
+    let $i := $nav?index(xdb:hashcode($word))
+    return if (empty($i)) then map {} else map {
+        'previous': if ($i > 1) then $nav?words($i - 1) else (),
+        'next': if ($i < array:size($nav?words)) then $nav?words($i + 1) else ()
+    }
+};
+
 declare function local:is-match($s1 as xs:string?, $s2 as xs:string?) as xs:boolean {
     not(c:normalize-for-match($s1) != c:normalize-for-match($s2))
 };
@@ -359,42 +394,9 @@ else
 <span class="list-nav"> {
 let $lang := $words[1]/ancestor-or-self::*[@l][1]/@l/string()
 let $base-word := $words[1]/ancestor-or-self::*[@l=$lang][last()]
-let $base-word-speech := c:get-speech($base-word)
-let $base-word-set := xdb:key($words[1], 'language', $lang)
-let $word-set := 
-    if (ends-with($base-word-speech, '-name')) then    
-        $base-word-set[ends-with(c:get-speech(.), '-name')]
-    else if ($base-word-speech = 'phrase' or $base-word-speech = 'text') then    
-        $base-word-set[c:get-speech(.)='phrase' or c:get-speech(.)='text']
-    else if ($base-word-speech = 'grammar') then    
-        $base-word-set[c:get-speech(.)='grammar']
-    else if ($base-word-speech = 'phonetic-group') then    
-        $base-word-set[c:get-speech(.)='phonetic-group']
-    else if ($base-word-speech = 'phonetic-rule') then    
-        $base-word-set[c:get-speech(.)='phonetic-rule']
-    else if ($base-word-speech = 'phoneme') then    
-        $base-word-set[c:get-speech(.)='phoneme']
-    else if ($base-word-speech = 'root') then    
-        $base-word-set[c:get-speech(.)='root']
-    else
-        $base-word-set
-            [not(ends-with(c:get-speech(.), '-name'))]
-            [not(c:get-speech(.)='phrase' or c:get-speech(.)='text')]
-            [not(starts-with(c:get-speech(.), 'phone'))]
-            [not(c:get-speech(.)='grammar')]
-            [not(c:get-speech(.)='root')]
-let $sorted-word-set :=
-    <group> {
-        for $item in $word-set
-        order by $item/@order, c:normalize-for-sort($item/@v)
-        return
-        <word l="{c:get-lang($item)}" v="{$item/@v}"> {
-            if (xdb:hashcode($item) = xdb:hashcode($words[1])) then 'match' else ()
-        } </word>
-    } </group>
-let $match-in-word-set := $sorted-word-set/*[text()='match'][1]
-let $preceding-word := $match-in-word-set/preceding-sibling::*[1]
-let $following-word := $match-in-word-set/following-sibling::*[1]
+let $neighbours := local:neighbours(/*, $lang, c:get-speech($base-word), false(), $words[1])
+let $preceding-word := $neighbours?previous
+let $following-word := $neighbours?next
 let $parent := $words[1]/ancestor::word[not(see)][1]
 let $is-neo-parent := c:is-neo($parent)
 return (
@@ -442,44 +444,10 @@ else
 <span class="search-nav-link">[<a href="../search/search.html">Search</a>]</span>
 <hr class="nav-break"/>
 <span class="list-nav"> {
-let $lang := $l
 let $base-word := if ($words[1]/combine) then c:get-word($words[1]/combine) else $words[1]
-let $base-word-speech := c:get-speech($base-word)
-let $base-word-set := c:lang-words(/*, $lang)
-let $word-set := 
-    if (ends-with($base-word-speech, '-name')) then    
-        $base-word-set[ends-with(c:get-speech(.), '-name')]
-    else if ($base-word-speech = 'phrase' or $base-word-speech = 'text') then    
-        $base-word-set[c:get-speech(.)='phrase' or c:get-speech(.)='text']
-    else if ($base-word-speech = 'grammar') then    
-        $base-word-set[c:get-speech(.)='grammar']
-    else if ($base-word-speech = 'phonetic-group') then    
-        $base-word-set[c:get-speech(.)='phonetic-group']
-    else if ($base-word-speech = 'phonetic-rule') then    
-        $base-word-set[c:get-speech(.)='phonetic-rule']
-    else if ($base-word-speech = 'phoneme') then    
-        $base-word-set[c:get-speech(.)='phoneme']
-    else if ($base-word-speech = 'root') then    
-        $base-word-set[c:get-speech(.)='root']
-    else
-        $base-word-set
-            [not(ends-with(c:get-speech(.), '-name'))]
-            [not(c:get-speech(.)='phrase' or c:get-speech(.)='text')]
-            [not(starts-with(c:get-speech(.), 'phone'))]
-            [not(c:get-speech(.)='grammar')]
-            [not(c:get-speech(.)='root')]
-let $sorted-word-set :=
-    <group> {
-        for $item in $word-set
-        order by $item/@order, c:normalize-for-sort(c:normalize-spelling($item/@v))
-        return
-        <word l="{c:get-lang($item)}" v="{$item/@v}"> {
-            if (xdb:hashcode($item) = xdb:hashcode($base-word)) then 'match' else ()
-        } </word>
-    } </group>
-let $match-in-word-set := $sorted-word-set/*[text()='match'][1]
-let $preceding-word := $match-in-word-set/preceding-sibling::*[1]
-let $following-word := $match-in-word-set/following-sibling::*[1]
+let $neighbours := local:neighbours(/*, $l, c:get-speech($base-word), true(), $base-word)
+let $preceding-word := $neighbours?previous
+let $following-word := $neighbours?next
 return (
     if ($preceding-word) then <span class="previous-nav-link">
         [<a href="{c:to-word-link($preceding-word)}">← Previous</a>]

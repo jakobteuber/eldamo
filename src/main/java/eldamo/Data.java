@@ -159,7 +159,7 @@ final class Data {
         for (var item : ScopedValue.where(CURRENT, data).call(selector::evaluate)) {
             var entry = (XdmArray) item;
             var values = entry.get(1);
-            var first = values.isEmpty() ? "" : values.itemAt(0).getStringValue();
+            var first = values.size() == 0 ? "" : values.itemAt(0).getStringValue();
             var ids = switch (key.type()) {
                 case NODES -> values.stream().map(XdmItem::getStringValue).toList();
                 case STRING -> List.of(first);
