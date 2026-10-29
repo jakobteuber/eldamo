@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="2.0"
     xmlns:q="quenya"
-    xmlns:xdb="java:xdb.dom.CustomFunctions"
+    xmlns:xdb="xdb"
     exclude-result-prefixes="q xdb">
     
     <!--
     <xsl:variable name="merge.xml" select="/.."/>
     <xsl:variable name="merge.xml" select="document('/Users/ps142237/Dropbox/quenya-web/web/data/merge.xml')"/>
     -->
-    <xsl:variable name="merge.xml" select="document('data/merge.xml')"/>
+    <xsl:variable name="merge.xml" select="document('../../data/merge.xml')"/>
 
     <xsl:key name="on-deriv" match="word[@l='n']" use="ref/deriv/@source"/> 
     <xsl:key name="on-ref" match="word[@l='on']" use="ref/@source"/> 

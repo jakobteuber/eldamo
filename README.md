@@ -8,16 +8,15 @@ be found at https://eldamo.org (mirror https://pfstrack.github.io/eldamo/) and p
 This document provides information for those interested in how the Eldamo site is generated. To fully understand this
 process, you need to know:
 
-* Java web application development
+* Java
 * XML editing and parsing, include XSL and XQuery
 
 ## Requirements
 
 1. Git
-2. Java 1.6+
-3. Gradle 2.6+ (which will download other dependencies)
-4. A good text editor (I use TextWrangler on OS X).
-5. For generating the site, a web crawler (I use SiteSucker on OS X)
+2. Java 25+ (the Gradle wrapper downloads everything else)
+3. A good text editor (I use TextWrangler on OS X).
+4. For generating the site, a web crawler (I use SiteSucker on OS X)
 
 ## Command-line Execution
 
@@ -35,10 +34,10 @@ cp -R src/data src/main/webapp
 
 Or simply manually copy the directory.
 
-3) Use gradle to launch the Jetty web application server (tomcat probably also works).
+3) Start the development server:
 
 ```
-gradle :jettyRun
+./gradlew run
 ```
 
 4) Browse the site:
@@ -49,50 +48,17 @@ http://localhost:8080/eldamo/
 
 5) Edit the data file (src/main/webapp/eldamo-data.xml) and refresh the pages to see changes.
 
-## Building in Eclipse
+## Using an IDE
 
-If you want to use an Java development tool, here is how to set the project up in Eclipse.
-
-1) Use gradle generate an Eclipse project:
-
-```
-gradle :eclipse
-```
-
-2) Import the project into Eclipse: File > Import : General > Existing Project Into Workspace
-
-3) In the project properties, set the file encoding to UTF-8:
-
-* Project > Properties
-* Resource > Text File Encoding
-* Select Other: UTF-8
-
-4) Install the Jetty plug-in for Eclipse.
-
-5) Select the project and Run > Run As > Run Jetty
-
-6) Browse the site as above:
-
-```
-http://localhost:8080/eldamo/
-```
-
-7) For best performance, you will need to increase the memory in JVM arguments for the Jetty run configurations:
-
-* Run > Run Configurations
-* Jetty Webapp > eldamo
-* Arguments > VM Arguments
-
-```
--Xmx1024m
-```
+Import the project as a Gradle project (Eclipse, IntelliJ IDEA, …) and run `eldamo.Main` with the project directory as
+working directory.
 
 ## Building the Eldamo Site
 
-1) Switch to the "pub" (publish) version of the site:
-
 ```
-http://localhost:8080/eldamo/pub/index.html
+./gradlew release
 ```
 
-2) Use your web crawler of choice to crawl and download the site contents.
+This writes the published ("pub") version of the site to `build/site`: the static files, the home page and every page
+listed by `config/query-configs/site-pages.xq`. The published version can also be browsed on the development server at
+http://localhost:8080/eldamo/pub/index.html.

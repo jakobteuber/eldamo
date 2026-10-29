@@ -22,7 +22,7 @@
 <title>Eldamo : Compare Refs</title>
 </head>
 <body>
-<p><a href="../accept-refs.jsp">Accept</a></p>
+<p><a href="../accept-refs">Accept</a></p>
 <!--
 <xsl:if test="$deleted">
     <hr/>

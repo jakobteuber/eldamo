@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="2.0"
     xmlns:q="quenya"
-    xmlns:xdb="java:xdb.dom.CustomFunctions"
+    xmlns:xdb="xdb"
     exclude-result-prefixes="q xdb">
 
     <xsl:key name="on-deriv" match="word[@l='n']" use="ref/deriv/@source"/> 
