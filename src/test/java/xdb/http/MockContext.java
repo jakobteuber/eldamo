@@ -284,4 +284,9 @@ public class MockContext implements ServletContext {
         // TODO Auto-generated method stub
         
     }
+
+    @Override
+    public String getVirtualServerName() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
 }
